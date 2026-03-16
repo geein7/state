@@ -33,19 +33,27 @@ main{max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-direction:col
 .price{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
 .chg{font-size:13px;font-weight:500}
 .up{color:var(--up)}.down{color:var(--down)}
-.range-btns{display:flex;gap:4px;margin-left:auto;flex-shrink:0}
+.chart-box{width:100%;height:400px}
+
+/* CONTROLS (interval + range) */
+.controls{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
+.sep{width:1px;height:16px;background:var(--border)}
+.interval-btns{display:flex;gap:3px}
+.ibtn{background:transparent;border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-size:11px;padding:4px 10px;cursor:pointer;transition:.15s all;font-weight:500}
+.ibtn:hover{background:rgba(31,111,235,.15)}
+.ibtn.active{background:var(--accent);color:#fff}
+.range-btns{display:flex;gap:4px}
 .rbtn{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 9px;cursor:pointer;transition:.15s all}
 .rbtn:hover{background:var(--border);color:var(--text)}
-.rbtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
-.chart-box{width:100%;height:400px}
+.rbtn.active{background:var(--chip);border-color:var(--muted);color:var(--text)}
 
 /* CHIPS */
 .chips-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px}
 .chips-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;font-weight:500}
+.chips-hint{font-size:10px;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none}
 .chips{display:flex;gap:7px;flex-wrap:wrap}
 .chip{background:var(--chip);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:12px;padding:5px 13px;cursor:pointer;transition:.15s all}
 .chip:hover,.chip.active{background:var(--accent);border-color:var(--accent)}
-.chips-hint{font-size:10px;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none}
 .user-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px 5px 12px}
 .chip-remove{font-size:15px;line-height:1;color:var(--muted);padding:0 2px;border-radius:3px;transition:.15s}
 .chip-remove:hover{color:var(--down)}
@@ -62,6 +70,7 @@ main{max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-direction:col
 @media(max-width:600px){
   .chart-box{height:260px}
   .price{font-size:17px}
-  .range-btns{gap:3px}
-  .rbtn{padding:3px 7px}
+  .controls{gap:4px}
+  .sep{display:none}
+  .ibtn,.rbtn{padding:3px 7px}
 }

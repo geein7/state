@@ -1,9 +1,4 @@
-/* ────────────────────────────────────────────────────────
-   한국 주식 차트 앱
-   백엔드: localhost:3000 (server.ps1)
-──────────────────────────────────────────────────────── */
-
-const API = '';   // 같은 오리진
+const API = '';
 
 // ── 차트 공통 옵션 ──────────────────────────────────────
 const CHART_OPT = {
@@ -74,14 +69,27 @@ function setChg(el, cur, prev) {
   el.className = 'chg ' + (d >= 0 ? 'up' : 'down');
 }
 
-function intervalFor(range) {
-  return range === '5y' ? '1wk' : '1d';
-}
-
 function setRangeActive(groupId, activeRange) {
   document.querySelectorAll(`#${groupId} .rbtn`).forEach(b => {
     b.classList.toggle('active', b.dataset.r === activeRange);
   });
+}
+
+function setIntervalActive(groupId, activeInterval) {
+  document.querySelectorAll(`#${groupId} .ibtn`).forEach(b => {
+    b.classList.toggle('active', b.dataset.i === activeInterval);
+  });
+}
+
+// 인터벌에 맞게 기간 자동 조정
+const MIN_RANGE = { '1d': '1mo', '1wk': '6mo', '1mo': '1y' };
+const RANGE_ORDER = ['1mo','3mo','6mo','1y','5y'];
+
+function adjustRange(interval, currentRange) {
+  const min = MIN_RANGE[interval];
+  const minIdx = RANGE_ORDER.indexOf(min);
+  const curIdx = RANGE_ORDER.indexOf(currentRange);
+  return curIdx < minIdx ? min : currentRange;
 }
 
 // ── 차트 데이터 적용 ────────────────────────────────────
@@ -101,6 +109,7 @@ function applyData(inst, data) {
 // ── KOSPI ───────────────────────────────────────────────
 let kInst = null;
 let kRange = '1mo';
+let kInterval = '1d';
 
 function initKospi() {
   kInst = makeChart('kChart');
@@ -109,7 +118,7 @@ function initKospi() {
 async function loadKospi(range) {
   loading(true);
   try {
-    const d = await fetchChart('^KS11', range, intervalFor(range));
+    const d = await fetchChart('^KS11', range, kInterval);
     applyData(kInst, d);
     const last = d.candles[d.candles.length - 1];
     document.getElementById('kPrice').textContent = fmt(last?.close);
@@ -124,7 +133,7 @@ async function loadKospi(range) {
 
 // ── 개별 종목 ───────────────────────────────────────────
 let sInst = null;
-let curSym = null, curName = null, sRange = '1mo';
+let curSym = null, curName = null, sRange = '1mo', sInterval = '1d';
 
 async function loadStock(symbol, name, range) {
   const card = document.getElementById('sCard');
@@ -132,7 +141,7 @@ async function loadStock(symbol, name, range) {
   if (!sInst) sInst = makeChart('sChart');
   loading(true);
   try {
-    const d = await fetchChart(symbol, range, intervalFor(range));
+    const d = await fetchChart(symbol, range, sInterval);
     applyData(sInst, d);
     const last = d.candles[d.candles.length - 1];
     document.getElementById('sName').textContent = name;
@@ -148,12 +157,32 @@ async function loadStock(symbol, name, range) {
 }
 
 // ── 이벤트 ──────────────────────────────────────────────
+document.getElementById('kIntervals').addEventListener('click', e => {
+  const btn = e.target.closest('.ibtn');
+  if (!btn) return;
+  kInterval = btn.dataset.i;
+  setIntervalActive('kIntervals', kInterval);
+  kRange = adjustRange(kInterval, kRange);
+  setRangeActive('kRanges', kRange);
+  loadKospi(kRange);
+});
+
 document.getElementById('kRanges').addEventListener('click', e => {
   const btn = e.target.closest('.rbtn');
   if (!btn) return;
   kRange = btn.dataset.r;
   setRangeActive('kRanges', kRange);
   loadKospi(kRange);
+});
+
+document.getElementById('sIntervals').addEventListener('click', e => {
+  const btn = e.target.closest('.ibtn');
+  if (!btn) return;
+  sInterval = btn.dataset.i;
+  setIntervalActive('sIntervals', sInterval);
+  sRange = adjustRange(sInterval, sRange);
+  setRangeActive('sRanges', sRange);
+  if (curSym) loadStock(curSym, curName, sRange);
 });
 
 document.getElementById('sRanges').addEventListener('click', e => {
@@ -219,6 +248,8 @@ document.getElementById('userChipList').addEventListener('click', e => {
   curSym = chip.dataset.s;
   curName = chip.dataset.n;
   sRange = '1mo';
+  sInterval = '1d';
+  setIntervalActive('sIntervals', sInterval);
   setRangeActive('sRanges', sRange);
   loadStock(curSym, curName, sRange);
 });
@@ -231,6 +262,8 @@ document.getElementById('chipList').addEventListener('click', e => {
   curSym = chip.dataset.s;
   curName = chip.dataset.n;
   sRange = '1mo';
+  sInterval = '1d';
+  setIntervalActive('sIntervals', sInterval);
   setRangeActive('sRanges', sRange);
   loadStock(curSym, curName, sRange);
 });
@@ -262,7 +295,9 @@ searchInput.addEventListener('input', () => {
             document.querySelectorAll('#userChipList .chip').forEach(c => {
               if (c.dataset.s === item.symbol) c.classList.add('active');
             });
-            curSym = item.symbol; curName = item.name; sRange = '1mo';
+            curSym = item.symbol; curName = item.name;
+            sRange = '1mo'; sInterval = '1d';
+            setIntervalActive('sIntervals', sInterval);
             setRangeActive('sRanges', sRange);
             loadStock(curSym, curName, sRange);
           };
