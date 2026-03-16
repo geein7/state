@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "stock-chart/api/**/*.js", "use": "@vercel/node" },
+    { "src": "stock-chart/public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/search", "dest": "/stock-chart/api/search.js" },
+    { "src": "/api/chart/([^/]+)", "dest": "/stock-chart/api/chart/[symbol].js?symbol=$1" },
+    { "src": "/(.*)", "dest": "/stock-chart/public/$1" }
+  ]
+}

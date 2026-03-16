@@ -5,7 +5,7 @@ const YAHOO_HEADERS = {
   'Referer': 'https://finance.yahoo.com',
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const { symbol } = req.query;
