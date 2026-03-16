@@ -25,9 +25,19 @@ module.exports = async function handler(req, res) {
     const q    = result.indicators.quote[0];
     const meta = result.meta;
 
+    // 일봉/주봉/월봉은 YYYY-MM-DD 문자열로 변환 (timezone 불일치 방지)
+    const isDailyPlus = ['1d', '1wk', '1mo'].includes(interval);
+    function toDateStr(t) {
+      const d = new Date(t * 1000);
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
     const candles = ts
       .map((t, i) => ({
-        time:   t,
+        time:   isDailyPlus ? toDateStr(t) : t,
         open:   q.open[i]   != null ? Math.round(q.open[i]   * 100) / 100 : null,
         high:   q.high[i]   != null ? Math.round(q.high[i]   * 100) / 100 : null,
         low:    q.low[i]    != null ? Math.round(q.low[i]    * 100) / 100 : null,
@@ -35,7 +45,7 @@ module.exports = async function handler(req, res) {
         volume: q.volume[i] || 0,
       }))
       .filter(c => c.open != null && c.close != null)
-      .sort((a, b) => a.time - b.time); // 분봉 등 타임스탬프 정렬 보장
+      .sort((a, b) => (a.time < b.time ? -1 : a.time > b.time ? 1 : 0)); // 분봉/일봉 모두 정렬
 
     res.status(200).json({
       symbol:    meta.symbol,

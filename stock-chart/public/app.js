@@ -14,6 +14,13 @@ const CANDLE_OPT = {
   wickUpColor: '#3fb950', wickDownColor: '#f85149',
 };
 
+const MA_OPTS = [
+  { period: 10,  color: '#e53935', title: 'MA10'  },
+  { period: 60,  color: '#43a047', title: 'MA60'  },
+  { period: 360, color: '#000000', title: 'MA360' },
+  { period: 500, color: '#757575', title: 'MA500' },
+];
+
 function makeChart(containerId) {
   const el = document.getElementById(containerId);
   const chart = LightweightCharts.createChart(el, {
@@ -24,8 +31,26 @@ function makeChart(containerId) {
     priceFormat: { type: 'volume' }, priceScaleId: 'vol',
   });
   vol.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+
+  const maLines = MA_OPTS.map(({ color, title }) =>
+    chart.addLineSeries({
+      color, lineWidth: 1, title,
+      priceLineVisible: false, lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    })
+  );
+
   new ResizeObserver(() => chart.applyOptions({ width: el.clientWidth })).observe(el);
-  return { chart, candle, vol };
+  return { chart, candle, vol, maLines };
+}
+
+function calcMA(candles, period) {
+  const result = [];
+  for (let i = period - 1; i < candles.length; i++) {
+    const sum = candles.slice(i - period + 1, i + 1).reduce((a, c) => a + c.close, 0);
+    result.push({ time: candles[i].time, value: Math.round((sum / period) * 100) / 100 });
+  }
+  return result;
 }
 
 // ── 인터벌별 기간 설정 ──────────────────────────────────
@@ -118,6 +143,11 @@ function applyData(inst, data) {
   }));
   inst.candle.setData(candles);
   inst.vol.setData(volumes);
+
+  MA_OPTS.forEach(({ period }, idx) => {
+    inst.maLines[idx].setData(calcMA(data.candles, period));
+  });
+
   inst.chart.timeScale().fitContent();
 }
 
@@ -339,6 +369,124 @@ searchInput.addEventListener('keydown', async e => {
 
 document.addEventListener('click', e => {
   if (!e.target.closest('.search-wrap')) searchResults.style.display = 'none';
+});
+
+// ── 예측 ────────────────────────────────────────────────
+
+// A) 선형회귀 (client-side JS)
+function linearRegressionPredict(prices) {
+  const n = prices.length;
+  const xs = Array.from({length: n}, (_, i) => i);
+  const sumX  = xs.reduce((a, b) => a + b, 0);
+  const sumY  = prices.reduce((a, b) => a + b, 0);
+  const sumXY = xs.reduce((acc, x, i) => acc + x * prices[i], 0);
+  const sumX2 = xs.reduce((acc, x) => acc + x * x, 0);
+  const slope     = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX ** 2);
+  const intercept = (sumY - slope * sumX) / n;
+  const predicted = intercept + slope * n;
+  const residuals = prices.map((p, i) => p - (intercept + slope * i));
+  const std = Math.sqrt(residuals.reduce((a, r) => a + r * r, 0) / n);
+  return {
+    prediction: Math.round(predicted),
+    ci_low:     Math.round(predicted - 1.645 * std),
+    ci_high:    Math.round(predicted + 1.645 * std),
+  };
+}
+
+// B) Holt-Winters via Python API
+async function hwPredict(prices) {
+  const res = await fetch(`${API}/api/predict`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prices }),
+  });
+  if (!res.ok) throw new Error(`HW API ${res.status}`);
+  const d = await res.json();
+  if (d.error) throw new Error(d.error);
+  return d;
+}
+
+// C) Claude AI via analyze API
+async function aiAnalyze(symbol, name, candles) {
+  const res = await fetch(`${API}/api/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ symbol, name, candles }),
+  });
+  if (!res.ok) throw new Error(`AI API ${res.status}`);
+  const d = await res.json();
+  if (d.error) throw new Error(d.error);
+  return d.analysis;
+}
+
+function fmtPred(price) {
+  return price != null ? Math.round(price).toLocaleString('ko-KR') + '원' : '-';
+}
+
+async function runPredictions() {
+  if (!curSym || !sInst) return;
+
+  const predPanel = document.getElementById('predPanel');
+  predPanel.style.display = 'block';
+  predPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Reset to loading state
+  document.getElementById('predStatPrice').innerHTML = '<span class="pred-spin"></span>';
+  document.getElementById('predStatRange').textContent = '';
+  document.getElementById('predHWPrice').innerHTML  = '<span class="pred-spin"></span>';
+  document.getElementById('predHWRange').textContent  = '';
+  document.getElementById('predAIText').innerHTML   = '<span class="pred-spin"></span> 분석 중...';
+
+  // Get candles from current chart data (fetch fresh 1d/3mo)
+  let candles;
+  try {
+    const d = await fetchChart(curSym, '3mo', '1d');
+    candles = d.candles;
+  } catch(e) {
+    showToast('예측용 데이터 로드 실패: ' + e.message);
+    return;
+  }
+
+  const prices = candles.map(c => c.close).filter(Boolean);
+  if (prices.length < 5) { showToast('데이터 부족'); return; }
+
+  // A) Linear regression (instant)
+  try {
+    const stat = linearRegressionPredict(prices.slice(-20));
+    document.getElementById('predStatPrice').textContent = fmtPred(stat.prediction);
+    document.getElementById('predStatRange').textContent =
+      `범위: ${fmtPred(stat.ci_low)} ~ ${fmtPred(stat.ci_high)}`;
+  } catch(e) {
+    document.getElementById('predStatPrice').innerHTML = `<span class="pred-error">오류: ${e.message}</span>`;
+  }
+
+  // B) Holt-Winters & C) AI in parallel
+  const [hwResult, aiResult] = await Promise.allSettled([
+    hwPredict(prices),
+    aiAnalyze(curSym, curName, candles.slice(-20)),
+  ]);
+
+  if (hwResult.status === 'fulfilled') {
+    const hw = hwResult.value;
+    document.getElementById('predHWPrice').textContent = fmtPred(hw.prediction);
+    document.getElementById('predHWRange').textContent =
+      `범위: ${fmtPred(hw.ci_low)} ~ ${fmtPred(hw.ci_high)}`;
+  } else {
+    document.getElementById('predHWPrice').innerHTML =
+      `<span class="pred-error">오류: ${hwResult.reason.message}</span>`;
+  }
+
+  if (aiResult.status === 'fulfilled') {
+    document.getElementById('predAIText').textContent = aiResult.value;
+  } else {
+    document.getElementById('predAIText').innerHTML =
+      `<span class="pred-error">오류: ${aiResult.reason.message}</span>`;
+  }
+}
+
+document.getElementById('predBtn').addEventListener('click', runPredictions);
+document.getElementById('predClose').addEventListener('click', () => {
+  document.getElementById('predPanel').style.display = 'none';
 });
 
 // ── 초기화 ──────────────────────────────────────────────
