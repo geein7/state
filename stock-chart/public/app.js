@@ -164,6 +164,65 @@ document.getElementById('sRanges').addEventListener('click', e => {
   if (curSym) loadStock(curSym, curName, sRange);
 });
 
+// ── 내 종목 관리 ────────────────────────────────────────
+const USER_KEY = 'userStocks';
+
+function getUserStocks() {
+  try { return JSON.parse(localStorage.getItem(USER_KEY)) || []; }
+  catch { return []; }
+}
+
+function saveUserStocks(list) {
+  localStorage.setItem(USER_KEY, JSON.stringify(list));
+}
+
+function renderUserChips() {
+  const list = getUserStocks();
+  const container = document.getElementById('userChipList');
+  document.getElementById('userCard').style.display = list.length ? 'block' : 'none';
+  container.innerHTML = '';
+  list.forEach(({ symbol, name }) => {
+    const btn = document.createElement('button');
+    btn.className = 'chip user-chip';
+    btn.dataset.s = symbol;
+    btn.dataset.n = name;
+    btn.innerHTML = `<span class="chip-label">${name}</span><span class="chip-remove" data-s="${symbol}" title="삭제">×</span>`;
+    container.appendChild(btn);
+  });
+}
+
+function addUserStock(symbol, name) {
+  const list = getUserStocks();
+  if (!list.find(x => x.symbol === symbol)) {
+    list.push({ symbol, name });
+    saveUserStocks(list);
+  }
+  renderUserChips();
+}
+
+function removeUserStock(symbol) {
+  saveUserStocks(getUserStocks().filter(x => x.symbol !== symbol));
+  renderUserChips();
+}
+
+document.getElementById('userChipList').addEventListener('click', e => {
+  const removeBtn = e.target.closest('.chip-remove');
+  if (removeBtn) {
+    e.stopPropagation();
+    removeUserStock(removeBtn.dataset.s);
+    return;
+  }
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  curSym = chip.dataset.s;
+  curName = chip.dataset.n;
+  sRange = '1mo';
+  setRangeActive('sRanges', sRange);
+  loadStock(curSym, curName, sRange);
+});
+
 document.getElementById('chipList').addEventListener('click', e => {
   const chip = e.target.closest('.chip');
   if (!chip) return;
@@ -198,7 +257,11 @@ searchInput.addEventListener('input', () => {
           li.onclick = () => {
             searchResults.style.display = 'none';
             searchInput.value = '';
+            addUserStock(item.symbol, item.name);
             document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('#userChipList .chip').forEach(c => {
+              if (c.dataset.s === item.symbol) c.classList.add('active');
+            });
             curSym = item.symbol; curName = item.name; sRange = '1mo';
             setRangeActive('sRanges', sRange);
             loadStock(curSym, curName, sRange);
@@ -216,5 +279,6 @@ document.addEventListener('click', e => {
 });
 
 // ── 초기화 ──────────────────────────────────────────────
+renderUserChips();
 initKospi();
 loadKospi('1mo');

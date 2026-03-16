@@ -45,6 +45,10 @@ main{max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-direction:col
 .chips{display:flex;gap:7px;flex-wrap:wrap}
 .chip{background:var(--chip);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:12px;padding:5px 13px;cursor:pointer;transition:.15s all}
 .chip:hover,.chip.active{background:var(--accent);border-color:var(--accent)}
+.chips-hint{font-size:10px;color:var(--muted);font-weight:400;letter-spacing:0;text-transform:none}
+.user-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px 5px 12px}
+.chip-remove{font-size:15px;line-height:1;color:var(--muted);padding:0 2px;border-radius:3px;transition:.15s}
+.chip-remove:hover{color:var(--down)}
 
 /* LOADER */
 #loader{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center}
