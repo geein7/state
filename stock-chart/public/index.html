@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>한국 주식 차트</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<header>
+  <div class="hdr">
+    <h1>🇰🇷 한국 주식 차트</h1>
+    <div class="search-wrap">
+      <input id="searchInput" type="text" placeholder="종목명 검색 (예: 삼성전자, NAVER)" autocomplete="off"/>
+      <ul id="searchResults"></ul>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- KOSPI 종합지수 -->
+  <div class="card">
+    <div class="card-head">
+      <div class="title-row">
+        <span class="label">KOSPI 종합지수</span>
+        <span class="badge">^KS11</span>
+      </div>
+      <div class="price-row">
+        <span class="price" id="kPrice">로딩중...</span>
+        <span class="chg" id="kChg"></span>
+      </div>
+      <div class="range-btns" id="kRanges">
+        <button class="rbtn active" data-r="1mo">1개월</button>
+        <button class="rbtn" data-r="3mo">3개월</button>
+        <button class="rbtn" data-r="6mo">6개월</button>
+        <button class="rbtn" data-r="1y">1년</button>
+        <button class="rbtn" data-r="5y">5년</button>
+      </div>
+    </div>
+    <div class="chart-box" id="kChart"></div>
+  </div>
+
+  <!-- 주요 종목 -->
+  <div class="chips-card">
+    <div class="chips-title">주요 종목 바로가기</div>
+    <div class="chips" id="chipList">
+      <button class="chip" data-s="005930.KS" data-n="삼성전자">삼성전자</button>
+      <button class="chip" data-s="000660.KS" data-n="SK하이닉스">SK하이닉스</button>
+      <button class="chip" data-s="035420.KS" data-n="NAVER">NAVER</button>
+      <button class="chip" data-s="005380.KS" data-n="현대차">현대차</button>
+      <button class="chip" data-s="051910.KS" data-n="LG화학">LG화학</button>
+      <button class="chip" data-s="006400.KS" data-n="삼성SDI">삼성SDI</button>
+      <button class="chip" data-s="035720.KS" data-n="카카오">카카오</button>
+      <button class="chip" data-s="000270.KS" data-n="기아">기아</button>
+      <button class="chip" data-s="012330.KS" data-n="현대모비스">현대모비스</button>
+      <button class="chip" data-s="068270.KS" data-n="셀트리온">셀트리온</button>
+      <button class="chip" data-s="207940.KS" data-n="삼성바이오로직스">삼성바이오로직스</button>
+      <button class="chip" data-s="066570.KS" data-n="LG전자">LG전자</button>
+    </div>
+  </div>
+
+  <!-- 개별 종목 -->
+  <div class="card" id="sCard" style="display:none">
+    <div class="card-head">
+      <div class="title-row">
+        <span class="label" id="sName">-</span>
+        <span class="badge" id="sSym">-</span>
+      </div>
+      <div class="price-row">
+        <span class="price" id="sPrice">-</span>
+        <span class="chg" id="sChg"></span>
+      </div>
+      <div class="range-btns" id="sRanges">
+        <button class="rbtn active" data-r="1mo">1개월</button>
+        <button class="rbtn" data-r="3mo">3개월</button>
+        <button class="rbtn" data-r="6mo">6개월</button>
+        <button class="rbtn" data-r="1y">1년</button>
+        <button class="rbtn" data-r="5y">5년</button>
+      </div>
+    </div>
+    <div class="chart-box" id="sChart"></div>
+  </div>
+</main>
+
+<div id="loader"><div class="spin"></div></div>
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
