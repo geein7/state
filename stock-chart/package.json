@@ -2,7 +2,7 @@
   "name": "stock-chart",
   "version": "1.0.0",
   "description": "한국 주식 차트 웹앱",
-  "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
