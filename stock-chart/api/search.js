@@ -1,6 +1,5 @@
-// 주요 한국 상장 종목 로컬 DB (한국어 검색 지원)
+// 주요 종목 로컬 DB (네이버 API 실패 시 fallback)
 const KR_STOCKS = [
-  // KOSPI 대형주
   {symbol:'005930.KS', name:'삼성전자'},
   {symbol:'000660.KS', name:'SK하이닉스'},
   {symbol:'035420.KS', name:'NAVER'},
@@ -63,38 +62,42 @@ const KR_STOCKS = [
   {symbol:'004370.KS', name:'농심'},
   {symbol:'007070.KS', name:'GS리테일'},
   {symbol:'078930.KS', name:'GS'},
-  {symbol:'036460.KS', name:'한국가스공사'},
   {symbol:'003490.KS', name:'대한항공'},
   {symbol:'020560.KS', name:'아시아나항공'},
   {symbol:'139480.KS', name:'이마트'},
   {symbol:'023530.KS', name:'롯데쇼핑'},
   {symbol:'004170.KS', name:'신세계'},
   {symbol:'069960.KS', name:'현대백화점'},
-  {symbol:'000240.KS', name:'한국타이어앤테크놀로지'},
   {symbol:'011780.KS', name:'금호석유'},
-  {symbol:'051600.KS', name:'한전KPS'},
   {symbol:'036490.KS', name:'SK바이오팜'},
   {symbol:'326030.KS', name:'SK바이오사이언스'},
-  // KOSDAQ 주요종목
-  {symbol:'091990.KQ', name:'셀트리온헬스케어'},
-  {symbol:'145020.KQ', name:'휴젤'},
-  {symbol:'263750.KQ', name:'펄어비스'},
-  {symbol:'112040.KQ', name:'위메이드'},
-  {symbol:'196170.KQ', name:'알테오젠'},
-  {symbol:'357780.KQ', name:'솔브레인'},
+  {symbol:'036460.KS', name:'한국가스공사'},
+  {symbol:'042670.KS', name:'HD현대인프라코어'},
   {symbol:'251270.KS', name:'넷마블'},
   {symbol:'036570.KS', name:'엔씨소프트'},
   {symbol:'259960.KS', name:'크래프톤'},
   {symbol:'035900.KS', name:'JYP Ent.'},
   {symbol:'041510.KS', name:'SM엔터테인먼트'},
   {symbol:'352820.KS', name:'하이브'},
-  {symbol:'042670.KS', name:'HD현대인프라코어'},
+  {symbol:'091990.KQ', name:'셀트리온헬스케어'},
+  {symbol:'145020.KQ', name:'휴젤'},
+  {symbol:'263750.KQ', name:'펄어비스'},
+  {symbol:'112040.KQ', name:'위메이드'},
+  {symbol:'196170.KQ', name:'알테오젠'},
+  {symbol:'357780.KQ', name:'솔브레인'},
 ];
 
 const YAHOO_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0',
   'Accept': 'application/json',
   'Referer': 'https://finance.yahoo.com',
+};
+
+const NAVER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0',
+  'Accept': 'application/json, text/javascript, */*',
+  'Referer': 'https://finance.naver.com',
+  'Origin': 'https://finance.naver.com',
 };
 
 function isKorean(text) {
@@ -108,36 +111,56 @@ function searchLocal(q) {
     .slice(0, 10);
 }
 
+// 네이버 금융 자동완성 API - 전체 KOSPI/KOSDAQ 종목 검색
+async function searchNaver(q) {
+  const url = `https://ac.finance.naver.com/ac?q=${encodeURIComponent(q)}&q_enc=UTF-8&st=0&r_format=json&r_enc=UTF-8&r_lt=1&비슷한단어=0`;
+  const r = await fetch(url, { headers: NAVER_HEADERS });
+  if (!r.ok) throw new Error(`Naver HTTP ${r.status}`);
+  const data = await r.json();
+
+  // 응답 형식: { items: [["종목명", "코드", "시장타입"], ...], ... }
+  // 또는 { items: [[["종목명", "코드", "시장타입"]], ...] }
+  const rawItems = data.items || [];
+  const flat = Array.isArray(rawItems[0]?.[0]) ? rawItems.flat() : rawItems;
+
+  return flat
+    .filter(item => item[2] === '1' || item[2] === '2') // 1=KOSPI, 2=KOSDAQ
+    .map(item => ({
+      symbol: item[1].padStart(6, '0') + (item[2] === '1' ? '.KS' : '.KQ'),
+      name: item[0],
+    }))
+    .slice(0, 10);
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const { q } = req.query;
   if (!q) return res.status(200).json([]);
 
-  // 한국어 쿼리 → 로컬 DB 검색
-  if (isKorean(q)) {
-    return res.status(200).json(searchLocal(q));
-  }
-
-  // 영어 쿼리 → Yahoo Finance 시도, 실패 시 로컬 DB fallback
+  // 1차: 네이버 금융 자동완성 (한국어·영어 모두 지원, 전체 상장 종목)
   try {
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0`;
-    const r = await fetch(url, { headers: YAHOO_HEADERS });
-    if (!r.ok) throw new Error(`Yahoo HTTP ${r.status}`);
-    const data = await r.json();
+    const items = await searchNaver(q);
+    if (items.length > 0) return res.status(200).json(items);
+  } catch { /* fallback */ }
 
-    const items = (data.quotes || [])
-      .filter(x => x.symbol && (x.symbol.endsWith('.KS') || x.symbol.endsWith('.KQ')))
-      .map(x => {
-        const local = KR_STOCKS.find(s => s.symbol === x.symbol);
-        return {
-          symbol: x.symbol,
-          name: local ? local.name : (x.longname || x.shortname || x.symbol),
-        };
-      });
-
-    return res.status(200).json(items.length ? items : searchLocal(q));
-  } catch {
-    return res.status(200).json(searchLocal(q));
+  // 2차: 영어 쿼리 → Yahoo Finance
+  if (!isKorean(q)) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0`;
+      const r = await fetch(url, { headers: YAHOO_HEADERS });
+      if (!r.ok) throw new Error(`Yahoo HTTP ${r.status}`);
+      const data = await r.json();
+      const items = (data.quotes || [])
+        .filter(x => x.symbol && (x.symbol.endsWith('.KS') || x.symbol.endsWith('.KQ')))
+        .map(x => {
+          const local = KR_STOCKS.find(s => s.symbol === x.symbol);
+          return { symbol: x.symbol, name: local ? local.name : (x.longname || x.shortname || x.symbol) };
+        });
+      if (items.length > 0) return res.status(200).json(items);
+    } catch { /* fallback */ }
   }
+
+  // 3차: 로컬 DB fallback
+  return res.status(200).json(searchLocal(q));
 };
