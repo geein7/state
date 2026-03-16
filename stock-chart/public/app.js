@@ -28,6 +28,44 @@ function makeChart(containerId) {
   return { chart, candle, vol };
 }
 
+// ── 인터벌별 기간 설정 ──────────────────────────────────
+const INTERVAL_RANGES = {
+  '1m':  [{r:'1d',l:'1일'},{r:'5d',l:'5일'}],
+  '5m':  [{r:'1d',l:'1일'},{r:'5d',l:'5일'},{r:'1mo',l:'1개월'}],
+  '15m': [{r:'5d',l:'5일'},{r:'1mo',l:'1개월'},{r:'3mo',l:'3개월'}],
+  '30m': [{r:'5d',l:'5일'},{r:'1mo',l:'1개월'},{r:'3mo',l:'3개월'}],
+  '60m': [{r:'1mo',l:'1개월'},{r:'3mo',l:'3개월'},{r:'6mo',l:'6개월'}],
+  '1d':  [{r:'1mo',l:'1개월'},{r:'3mo',l:'3개월'},{r:'6mo',l:'6개월'},{r:'1y',l:'1년'},{r:'5y',l:'5년'}],
+  '1wk': [{r:'6mo',l:'6개월'},{r:'1y',l:'1년'},{r:'2y',l:'2년'},{r:'5y',l:'5년'}],
+  '1mo': [{r:'1y',l:'1년'},{r:'2y',l:'2년'},{r:'5y',l:'5년'},{r:'10y',l:'10년'}],
+};
+const DEFAULT_RANGE = {
+  '1m':'1d','5m':'5d','15m':'1mo','30m':'1mo','60m':'3mo',
+  '1d':'1mo','1wk':'1y','1mo':'5y',
+};
+
+function renderRangeButtons(groupId, interval, activeRange) {
+  const container = document.getElementById(groupId);
+  const ranges = INTERVAL_RANGES[interval] || INTERVAL_RANGES['1d'];
+  const valid = activeRange && ranges.some(x => x.r === activeRange);
+  const range = valid ? activeRange : DEFAULT_RANGE[interval];
+  container.innerHTML = '';
+  ranges.forEach(({r, l}) => {
+    const btn = document.createElement('button');
+    btn.className = 'rbtn' + (r === range ? ' active' : '');
+    btn.dataset.r = r;
+    btn.textContent = l;
+    container.appendChild(btn);
+  });
+  return range;
+}
+
+function setIntervalActive(groupId, activeInterval) {
+  document.querySelectorAll(`#${groupId} .ibtn`).forEach(b => {
+    b.classList.toggle('active', b.dataset.i === activeInterval);
+  });
+}
+
 // ── API 호출 ────────────────────────────────────────────
 async function fetchChart(symbol, range, interval) {
   const res = await fetch(`${API}/api/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`);
@@ -67,29 +105,6 @@ function setChg(el, cur, prev) {
   const s = d >= 0 ? '+' : '';
   el.textContent = `${s}${fmt(d)} (${s}${p.toFixed(2)}%)`;
   el.className = 'chg ' + (d >= 0 ? 'up' : 'down');
-}
-
-function setRangeActive(groupId, activeRange) {
-  document.querySelectorAll(`#${groupId} .rbtn`).forEach(b => {
-    b.classList.toggle('active', b.dataset.r === activeRange);
-  });
-}
-
-function setIntervalActive(groupId, activeInterval) {
-  document.querySelectorAll(`#${groupId} .ibtn`).forEach(b => {
-    b.classList.toggle('active', b.dataset.i === activeInterval);
-  });
-}
-
-// 인터벌에 맞게 기간 자동 조정
-const MIN_RANGE = { '1d': '1mo', '1wk': '6mo', '1mo': '1y' };
-const RANGE_ORDER = ['1mo','3mo','6mo','1y','5y'];
-
-function adjustRange(interval, currentRange) {
-  const min = MIN_RANGE[interval];
-  const minIdx = RANGE_ORDER.indexOf(min);
-  const curIdx = RANGE_ORDER.indexOf(currentRange);
-  return curIdx < minIdx ? min : currentRange;
 }
 
 // ── 차트 데이터 적용 ────────────────────────────────────
@@ -156,14 +171,13 @@ async function loadStock(symbol, name, range) {
   }
 }
 
-// ── 이벤트 ──────────────────────────────────────────────
+// ── 이벤트: KOSPI ────────────────────────────────────────
 document.getElementById('kIntervals').addEventListener('click', e => {
   const btn = e.target.closest('.ibtn');
   if (!btn) return;
   kInterval = btn.dataset.i;
   setIntervalActive('kIntervals', kInterval);
-  kRange = adjustRange(kInterval, kRange);
-  setRangeActive('kRanges', kRange);
+  kRange = renderRangeButtons('kRanges', kInterval, kRange);
   loadKospi(kRange);
 });
 
@@ -171,17 +185,18 @@ document.getElementById('kRanges').addEventListener('click', e => {
   const btn = e.target.closest('.rbtn');
   if (!btn) return;
   kRange = btn.dataset.r;
-  setRangeActive('kRanges', kRange);
+  document.querySelectorAll('#kRanges .rbtn').forEach(b =>
+    b.classList.toggle('active', b === btn));
   loadKospi(kRange);
 });
 
+// ── 이벤트: 개별 종목 ───────────────────────────────────
 document.getElementById('sIntervals').addEventListener('click', e => {
   const btn = e.target.closest('.ibtn');
   if (!btn) return;
   sInterval = btn.dataset.i;
   setIntervalActive('sIntervals', sInterval);
-  sRange = adjustRange(sInterval, sRange);
-  setRangeActive('sRanges', sRange);
+  sRange = renderRangeButtons('sRanges', sInterval, sRange);
   if (curSym) loadStock(curSym, curName, sRange);
 });
 
@@ -189,7 +204,8 @@ document.getElementById('sRanges').addEventListener('click', e => {
   const btn = e.target.closest('.rbtn');
   if (!btn) return;
   sRange = btn.dataset.r;
-  setRangeActive('sRanges', sRange);
+  document.querySelectorAll('#sRanges .rbtn').forEach(b =>
+    b.classList.toggle('active', b === btn));
   if (curSym) loadStock(curSym, curName, sRange);
 });
 
@@ -200,11 +216,9 @@ function getUserStocks() {
   try { return JSON.parse(localStorage.getItem(USER_KEY)) || []; }
   catch { return []; }
 }
-
 function saveUserStocks(list) {
   localStorage.setItem(USER_KEY, JSON.stringify(list));
 }
-
 function renderUserChips() {
   const list = getUserStocks();
   const container = document.getElementById('userChipList');
@@ -219,7 +233,6 @@ function renderUserChips() {
     container.appendChild(btn);
   });
 }
-
 function addUserStock(symbol, name) {
   const list = getUserStocks();
   if (!list.find(x => x.symbol === symbol)) {
@@ -228,10 +241,21 @@ function addUserStock(symbol, name) {
   }
   renderUserChips();
 }
-
 function removeUserStock(symbol) {
   saveUserStocks(getUserStocks().filter(x => x.symbol !== symbol));
   renderUserChips();
+}
+
+function activateStock(symbol, name) {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#userChipList .chip').forEach(c => {
+    if (c.dataset.s === symbol) c.classList.add('active');
+  });
+  curSym = symbol; curName = name;
+  sInterval = '1d'; sRange = '1mo';
+  setIntervalActive('sIntervals', sInterval);
+  sRange = renderRangeButtons('sRanges', sInterval, sRange);
+  loadStock(curSym, curName, sRange);
 }
 
 document.getElementById('userChipList').addEventListener('click', e => {
@@ -243,29 +267,13 @@ document.getElementById('userChipList').addEventListener('click', e => {
   }
   const chip = e.target.closest('.chip');
   if (!chip) return;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  chip.classList.add('active');
-  curSym = chip.dataset.s;
-  curName = chip.dataset.n;
-  sRange = '1mo';
-  sInterval = '1d';
-  setIntervalActive('sIntervals', sInterval);
-  setRangeActive('sRanges', sRange);
-  loadStock(curSym, curName, sRange);
+  activateStock(chip.dataset.s, chip.dataset.n);
 });
 
 document.getElementById('chipList').addEventListener('click', e => {
   const chip = e.target.closest('.chip');
   if (!chip) return;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  chip.classList.add('active');
-  curSym = chip.dataset.s;
-  curName = chip.dataset.n;
-  sRange = '1mo';
-  sInterval = '1d';
-  setIntervalActive('sIntervals', sInterval);
-  setRangeActive('sRanges', sRange);
-  loadStock(curSym, curName, sRange);
+  activateStock(chip.dataset.s, chip.dataset.n);
 });
 
 // ── 검색 ────────────────────────────────────────────────
@@ -273,40 +281,60 @@ let sTimer;
 const searchInput   = document.getElementById('searchInput');
 const searchResults = document.getElementById('searchResults');
 
+function selectSearchItem(symbol, name) {
+  searchResults.style.display = 'none';
+  searchInput.value = '';
+  addUserStock(symbol, name);
+  activateStock(symbol, name);
+}
+
+async function runSearch(q) {
+  try {
+    const items = await fetchSearch(q);
+    searchResults.innerHTML = '';
+    if (!items.length) {
+      searchResults.innerHTML = '<li style="color:var(--muted);cursor:default">검색 결과 없음</li>';
+    } else {
+      items.forEach(item => {
+        const li = document.createElement('li');
+        li.dataset.symbol = item.symbol;
+        li.dataset.name   = item.name;
+        li.innerHTML = `<span class="r-name">${item.name}</span><span class="r-sym">${item.symbol}</span>`;
+        li.onclick = () => selectSearchItem(item.symbol, item.name);
+        searchResults.appendChild(li);
+      });
+    }
+    searchResults.style.display = 'block';
+    return items;
+  } catch {
+    return [];
+  }
+}
+
+// 입력 시 자동완성 (350ms 디바운스)
 searchInput.addEventListener('input', () => {
   clearTimeout(sTimer);
   const q = searchInput.value.trim();
   if (!q) { searchResults.style.display = 'none'; return; }
-  sTimer = setTimeout(async () => {
-    try {
-      const items = await fetchSearch(q);
-      searchResults.innerHTML = '';
-      if (!items.length) {
-        searchResults.innerHTML = '<li style="color:var(--muted);cursor:default">검색 결과 없음</li>';
-      } else {
-        items.forEach(item => {
-          const li = document.createElement('li');
-          li.innerHTML = `<span class="r-name">${item.name}</span><span class="r-sym">${item.symbol}</span>`;
-          li.onclick = () => {
-            searchResults.style.display = 'none';
-            searchInput.value = '';
-            addUserStock(item.symbol, item.name);
-            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('#userChipList .chip').forEach(c => {
-              if (c.dataset.s === item.symbol) c.classList.add('active');
-            });
-            curSym = item.symbol; curName = item.name;
-            sRange = '1mo'; sInterval = '1d';
-            setIntervalActive('sIntervals', sInterval);
-            setRangeActive('sRanges', sRange);
-            loadStock(curSym, curName, sRange);
-          };
-          searchResults.appendChild(li);
-        });
-      }
-      searchResults.style.display = 'block';
-    } catch { /* 무시 */ }
-  }, 350);
+  sTimer = setTimeout(() => runSearch(q), 350);
+});
+
+// Enter 키: 결과 있으면 첫 번째 선택, 없으면 즉시 검색 후 첫 번째 선택
+searchInput.addEventListener('keydown', async e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  clearTimeout(sTimer);
+  const q = searchInput.value.trim();
+  if (!q) return;
+
+  const firstLi = searchResults.querySelector('li[data-symbol]');
+  if (firstLi && searchResults.style.display !== 'none') {
+    selectSearchItem(firstLi.dataset.symbol, firstLi.dataset.name);
+    return;
+  }
+
+  const items = await runSearch(q);
+  if (items.length > 0) selectSearchItem(items[0].symbol, items[0].name);
 });
 
 document.addEventListener('click', e => {
@@ -315,5 +343,7 @@ document.addEventListener('click', e => {
 
 // ── 초기화 ──────────────────────────────────────────────
 renderUserChips();
+kRange = renderRangeButtons('kRanges', kInterval, kRange);
+renderRangeButtons('sRanges', sInterval, sRange);
 initKospi();
-loadKospi('1mo');
+loadKospi(kRange);

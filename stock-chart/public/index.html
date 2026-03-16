@@ -13,7 +13,7 @@
   <div class="hdr">
     <h1>🇰🇷 한국 주식 차트</h1>
     <div class="search-wrap">
-      <input id="searchInput" type="text" placeholder="종목명 검색 (예: 삼성전자, NAVER)" autocomplete="off"/>
+      <input id="searchInput" type="text" placeholder="종목명 검색 후 Enter 또는 클릭" autocomplete="off"/>
       <ul id="searchResults"></ul>
     </div>
   </div>
@@ -33,18 +33,17 @@
       </div>
       <div class="controls">
         <div class="interval-btns" id="kIntervals">
+          <button class="ibtn" data-i="1m">1분</button>
+          <button class="ibtn" data-i="5m">5분</button>
+          <button class="ibtn" data-i="15m">15분</button>
+          <button class="ibtn" data-i="30m">30분</button>
+          <button class="ibtn" data-i="60m">60분</button>
+          <span class="isep"></span>
           <button class="ibtn active" data-i="1d">일봉</button>
           <button class="ibtn" data-i="1wk">주봉</button>
           <button class="ibtn" data-i="1mo">월봉</button>
         </div>
-        <div class="sep"></div>
-        <div class="range-btns" id="kRanges">
-          <button class="rbtn active" data-r="1mo">1개월</button>
-          <button class="rbtn" data-r="3mo">3개월</button>
-          <button class="rbtn" data-r="6mo">6개월</button>
-          <button class="rbtn" data-r="1y">1년</button>
-          <button class="rbtn" data-r="5y">5년</button>
-        </div>
+        <div class="range-btns" id="kRanges"></div>
       </div>
     </div>
     <div class="chart-box" id="kChart"></div>
@@ -71,7 +70,7 @@
 
   <!-- 내 종목 -->
   <div class="chips-card" id="userCard" style="display:none">
-    <div class="chips-title">내 종목 <span class="chips-hint">(검색으로 추가 · × 로 삭제)</span></div>
+    <div class="chips-title">내 종목 <span class="chips-hint">(검색 후 Enter 또는 클릭으로 추가 · × 로 삭제)</span></div>
     <div class="chips" id="userChipList"></div>
   </div>
 
@@ -88,18 +87,17 @@
       </div>
       <div class="controls">
         <div class="interval-btns" id="sIntervals">
+          <button class="ibtn" data-i="1m">1분</button>
+          <button class="ibtn" data-i="5m">5분</button>
+          <button class="ibtn" data-i="15m">15분</button>
+          <button class="ibtn" data-i="30m">30분</button>
+          <button class="ibtn" data-i="60m">60분</button>
+          <span class="isep"></span>
           <button class="ibtn active" data-i="1d">일봉</button>
           <button class="ibtn" data-i="1wk">주봉</button>
           <button class="ibtn" data-i="1mo">월봉</button>
         </div>
-        <div class="sep"></div>
-        <div class="range-btns" id="sRanges">
-          <button class="rbtn active" data-r="1mo">1개월</button>
-          <button class="rbtn" data-r="3mo">3개월</button>
-          <button class="rbtn" data-r="6mo">6개월</button>
-          <button class="rbtn" data-r="1y">1년</button>
-          <button class="rbtn" data-r="5y">5년</button>
-        </div>
+        <div class="range-btns" id="sRanges"></div>
       </div>
     </div>
     <div class="chart-box" id="sChart"></div>

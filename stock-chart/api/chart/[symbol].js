@@ -34,7 +34,8 @@ module.exports = async function handler(req, res) {
         close:  q.close[i]  != null ? Math.round(q.close[i]  * 100) / 100 : null,
         volume: q.volume[i] || 0,
       }))
-      .filter(c => c.open != null && c.close != null);
+      .filter(c => c.open != null && c.close != null)
+      .sort((a, b) => a.time - b.time); // 분봉 등 타임스탬프 정렬 보장
 
     res.status(200).json({
       symbol:    meta.symbol,

@@ -38,10 +38,11 @@ main{max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-direction:col
 /* CONTROLS (interval + range) */
 .controls{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
 .sep{width:1px;height:16px;background:var(--border)}
-.interval-btns{display:flex;gap:3px}
+.interval-btns{display:flex;gap:3px;align-items:center;flex-wrap:wrap}
 .ibtn{background:transparent;border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-size:11px;padding:4px 10px;cursor:pointer;transition:.15s all;font-weight:500}
 .ibtn:hover{background:rgba(31,111,235,.15)}
 .ibtn.active{background:var(--accent);color:#fff}
+.isep{width:1px;height:14px;background:var(--border);margin:0 3px;flex-shrink:0}
 .range-btns{display:flex;gap:4px}
 .rbtn{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 9px;cursor:pointer;transition:.15s all}
 .rbtn:hover{background:var(--border);color:var(--text)}
